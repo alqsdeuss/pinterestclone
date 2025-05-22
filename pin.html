@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <title>apis</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Fredoka One', sans-serif;
+    }
+    body {
+      background: #0d0d0d;
+      color: white;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+    .header {
+      font-size: 28px;
+      color: #00ff80;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      justify-content: center;
+    }
+    .gallery-item {
+      flex: 1 1 200px;
+      max-width: 200px;
+      margin: 4px;
+      background-color: rgba(0, 0, 0, 0.65);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 255, 128, 0.2);
+      box-shadow: 0 0 12px rgba(0, 255, 128, 0.1);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .gallery-item img {
+      width: 100%;
+      display: block;
+      border-bottom: 1px solid rgba(0, 255, 128, 0.2);
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .download-button {
+      background-color: rgba(0, 255, 128, 0.25);
+      border: 1px solid rgba(0, 255, 128, 0.4);
+      color: white;
+      font-size: 14px;
+      padding: 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 90%;
+      margin: 10px 0;
+      transition: background-color 0.3s;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .download-button:hover {
+      background-color: rgba(0, 255, 128, 0.5);
+    }
+    @media (max-width: 768px) {
+      .gallery-item {
+        flex: 1 1 45%;
+        max-width: 45%;
+      }
+    }
+    @media (max-width: 480px) {
+      .gallery-item {
+        flex: 1 1 90%;
+        max-width: 90%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1 class="header">luyte.rocks avatar gallery</h1>
+  <div class="gallery" id="gallery"></div>
+
+  <script>
+    const gallery = document.getElementById('gallery');
+    const displayedUrls = new Set();
+    const maxPage = 10;
+    let loading = false;
+
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function randomEffectUrl(url, id) {
+      const effects = [
+        '',
+        '?grayscale',
+        '?blur',
+        '?blur=3',
+        '?grayscale&blur=2',
+        '?grayscale&blur=5',
+        `?seed=seed${id}`,
+        `?seed=seed${id}&grayscale`,
+        `?seed=seed${id}&blur=3`,
+        `?seed=seed${id}&grayscale&blur=2`
+      ];
+      const effect = effects[Math.floor(Math.random() * effects.length)];
+      return url + effect;
+    }
+
+    async function fetchPicsum(count = 7) {
+      const randomPage = Math.floor(Math.random() * maxPage) + 1;
+      const res = await fetch(`https://picsum.photos/v2/list?page=${randomPage}&limit=100`);
+      if (!res.ok) return [];
+      let images = await res.json();
+      images = images.filter(img => !displayedUrls.has(img.download_url));
+      images = shuffleArray(images);
+      return images.slice(0, count).map(img => ({
+        url: randomEffectUrl(img.download_url, img.id),
+        alt: `Photo by ${img.author}`,
+        download: img.download_url
+      }));
+    }
+
+    async function fetchDog(count = 3) {
+      const promises = [];
+      for(let i=0; i<count; i++) {
+        promises.push(fetch('https://dog.ceo/api/breeds/image/random').then(res => {
+          if(!res.ok) return null;
+          return res.json();
+        }).then(data => {
+          if(data && data.status === 'success' && !displayedUrls.has(data.message)) {
+            return { url: data.message, alt: 'Random dog', download: data.message };
+          }
+          return null;
+        }).catch(() => null));
+      }
+      const results = await Promise.all(promises);
+      return results.filter(Boolean);
+    }
+
+    async function fetchCat(count = 3) {
+      const promises = [];
+      for(let i=0; i<count; i++) {
+        promises.push(fetch('https://api.thecatapi.com/v1/images/search?limit=1').then(res => {
+          if(!res.ok) return null;
+          return res.json();
+        }).then(data => {
+          if(data && data.length && !displayedUrls.has(data[0].url)) {
+            return { url: data[0].url, alt: 'Random cat', download: data[0].url };
+          }
+          return null;
+        }).catch(() => null));
+      }
+      const results = await Promise.all(promises);
+      return results.filter(Boolean);
+    }
+
+    async function fetchNekos(category = 'neko', count = 5) {
+      const res = await fetch(`https://nekos.best/api/v2/${category}`);
+      if(!res.ok) return [];
+      const data = await res.json();
+      if(!data.results || !data.results.length) return [];
+      const filtered = data.results.filter(img => !displayedUrls.has(img.url));
+      return filtered.slice(0, count).map(img => ({
+        url: img.url,
+        alt: `${category} image`,
+        download: img.url
+      }));
+    }
+
+    async function loadImages() {
+      if (loading) return;
+      loading = true;
+
+      const picsumPromise = fetchPicsum();
+      const dogPromise = fetchDog();
+      const catPromise = fetchCat();
+      const nekoPromise = fetchNekos();
+
+      const [picsumImages, dogImages, catImages, nekoImages] = await Promise.all([
+        picsumPromise,
+        dogPromise,
+        catPromise,
+        nekoPromise
+      ]);
+
+      let allImages = [...picsumImages, ...dogImages, ...catImages, ...nekoImages];
+      allImages = shuffleArray(allImages);
+      allImages = allImages.filter(img => !displayedUrls.has(img.url));
+
+      allImages.forEach(img => {
+        displayedUrls.add(img.url);
+        const item = document.createElement('div');
+        item.className = 'gallery-item';
+
+        const image = document.createElement('img');
+        image.src = img.url;
+        image.alt = img.alt;
+        image.loading = 'lazy';
+
+        const a = document.createElement('a');
+        a.href = img.download;
+        a.target = '_blank';
+        a.download = '';
+        a.className = 'download-button';
+        a.textContent = 'download';
+
+        item.appendChild(image);
+        item.appendChild(a);
+        gallery.appendChild(item);
+      });
+
+      loading = false;
+    }
+
+    window.addEventListener('scroll', () => {
+      if(window.innerHeight + window.scrollY >= document.body.offsetHeight - 800) {
+        loadImages();
+      }
+    });
+
+    loadImages();
+  </script>
+</body>
+</html>
