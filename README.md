@@ -2,4 +2,4 @@
 simple website images
 
 # credits
-lhy.ev + ChatGPT lollll
+catrinai + ChatGPT :)))))
