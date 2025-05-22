@@ -2,4 +2,4 @@
 simple website images
 
 # credits
-catrinai + ChatGPT :)))))
+catrinai dis + ChatGPT :)))))
